@@ -1,0 +1,168 @@
+###########################################################
+Step 1: Install docker
+----------------------
+https://docs.docker.com/engine/install/ubuntu/
+https://docs.docker.com/engine/install/linux-postinstall/
+--OR--
+# Add Docker's official GPG key:
+$ sudo apt-get update
+$ sudo apt-get install ca-certificates curl gnupg
+$ sudo install -m 0755 -d /etc/apt/keyrings
+$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+$ sudo chmod a+r /etc/apt/keyrings/docker.gpg
+# Add the repository to Apt sources:
+$ echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+$ sudo apt-get update
+$ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+$ sudo groupadd docker
+$ sudo usermod -aG docker $USER
+$ newgrp docker
+
+###########################################################
+Step 2: Install Minikube & Start
+--------------------------------
+https://minikube.sigs.k8s.io/docs/start/
+--OR--
+$ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+$ sudo install minikube-linux-amd64 /usr/local/bin/minikube
+$ minikube start --cpus=2 --memory=6g --addons=ingress
+$ alias kubectl="minikube kubectl --"
+$ minikube kubectl -- get nodes
+
+###########################################################
+Step 3: Install AWX Operator
+----------------------------
+$ mkdir minikube_files
+$ cd minikube_files/
+$ sudo nano kustomization.yaml
+>>      apiVersion: kustomize.config.k8s.io/v1beta1
+	kind: Kustomization
+	resources:
+ 	 # Find the latest tag here: https://github.com/ansible/awx-operator/releases
+ 	 - github.com/ansible/awx-operator/config/default?ref=2.5.1
+
+	# Set the image tags to match the git version from above
+	images:
+ 	 - name: quay.io/ansible/awx-operator
+  	  newTag: 2.5.1
+
+	# Specify a custom namespace in which to install AWX
+	namespace: awx
+$ kubectl apply -k .
+$ kubectl get pods -n awx
+
+###########################################################
+Step 4: Install awx
+-------------------
+$ sudo nano awx-server.yaml
+>>	---
+	apiVersion: awx.ansible.com/v1beta1
+	kind: AWX
+	metadata:
+  	  name: awx-demo
+	spec:
+  	  service_type: nodeport
+$ sudo nano kustomization.yaml
+>>      ---
+	apiVersion: kustomize.config.k8s.io/v1beta1
+	kind: Kustomization
+	resources:
+ 	 # Find the latest tag here: https://github.com/ansible/awx-operator/releases
+ 	 - github.com/ansible/awx-operator/config/default?ref=2.5.1
+ 	 - awx-server.yaml
+
+	# Set the image tags to match the git version from above
+	images:
+ 	 - name: quay.io/ansible/awx-operator
+  	  newTag: 2.5.1
+
+	# Specify a custom namespace in which to install AWX
+	namespace: awx
+$ kubectl apply -k .
+$ kubectl logs -f deployments/awx-operator-controller-manager -c awx-manager -n awx
+$ kubectl config set-context --current --namespace=awx
+$ kubectl get svc
+$ minikube ip
+$ kubectl get secret awx-dem o-admin-password -o jsonpath="{.data.password}" | base64 --decode ; echo
+
+###########################################################
+Step 5: Enable external access
+------------------------------
+$ kubectl port-forward service/awx-demo-service --address 0.0.0.0 30080:80
+
+###########################################################
+Step 6: After reboot
+--------------------
+$ minikube start --cpus=2 --memory=6g --addons=ingress
+$ kubectl config set-context --current --namespace=awx
+
+###########################################################
+History
+-------    
+    1  reboot
+    2  sudo apt update
+    3  sudo apt upgrade 
+    4  sudo nano /etc/cron.d/shecan
+    5  sudo service cron reload
+    6  # Add Docker's official GPG key:
+    7  sudo apt-get update
+    8  sudo apt-get install ca-certificates curl gnupg
+    9  sudo install -m 0755 -d /etc/apt/keyrings
+   10  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+   11  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+   12  # Add the repository to Apt sources:
+   13  echo   "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+   14    "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   15  sudo apt-get update
+   16  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   17  sudo service cron reload
+   18  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   19  sudo groupadd docker
+   20  sudo usermod -aG docker $USER
+   21  newgrp docker
+   22  curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+   23  sudo install minikube-linux-amd64 /usr/local/bin/minikube
+   24  minikube version
+   25  minikube status
+   26  ls /etc/cron.d/shecan 
+   27  minikube start --cpus=2 --memory=6g --addons=ingress
+   28  docker ps -a
+   29  minikube kubectl -- get nodes
+   30  alias kubectl="minikube kubectl --"
+   31  kubectl get nodes
+   32  kubectl get pods
+   33  kubectl get pods -A
+   34  mkdir minikube_files
+   35  cd minikube_files/
+   36  sudo nano kustomization.yaml
+   37  kubectl apply -k .
+   38  kubectl get pods -A
+   39  kubectl get pods -n awx
+   40  kubectl apply -k .
+   41  sudo nano awx-server.yaml
+   42  sudo nano kustomization.yaml
+   43  kubectl apply -k .
+   44  kubectl logs -f deployments/awx-operator-controller-manager -c awx-manager -n awx
+   45  kubectl config set-context --current --namespace=awx
+   46  kubectl get pods
+   47  kubectl get svc
+   48  minikube ip
+   49  minikube dashboard
+   50  watch minikube kubectl -- get pods -n awx
+   51  minikube status
+   52  minikube ip
+   53  kubectl get pods
+   54  minikube start --cpus=2 --memory=6g --addons=ingress
+   55  minikube ip
+   56  kubectl get pods
+   57  alias kubectl="minikube kubectl --"
+   58  kubectl get pods
+   59  docker ps
+   60  kubectl get svc
+   61  kubectl config set-context --current --namespace=awx
+   62  kubectl get svc
+   63  history
+
