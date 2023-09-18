@@ -97,6 +97,7 @@ $ kubectl port-forward service/awx-demo-service --address 0.0.0.0 30080:80
 Step 6: After reboot
 --------------------
 $ minikube start --cpus=2 --memory=6g --addons=ingress
+$ alias kubectl="minikube kubectl --"
 $ kubectl config set-context --current --namespace=awx
 
 ###########################################################
