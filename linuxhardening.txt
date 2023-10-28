@@ -1,0 +1,186 @@
+Physical Access Hardening
+
+- Single user mode security:
+	
+	-Add the followning lines to this two files: /lib/systemd/system/emergency.service, /lib/systemd/system/rescue.service
+	  -Replace sushell to sulogin at where lines include "ExecStart" 
+	-And run the command: 
+	  $ set password for root single user mode => passwd
+
+- Set password for grub
+	- $ grub-mkpasswd-pbkdf2 => GENERATE PASSWORD TO BE REPLECED BY SOMEPASSWORD IN 41_CUSTOM
+	-Add the following lines to this file: /etc/grub.d/41_custom
+	- add lines:
+		set superusers="SOMEUSER"
+		password "SOMEUSER" "SOMEPASSWORD"
+	-And run this commands:
+		$ update-grub
+
+
+-----------------------------------------------------------------------------------
+Account Security
+- /etc/passwd and /etc/shadow contain user and password
+-> for example: root:password:0(uid):0:root:/bin/bash
+
+- How to creat user and pass:
+$ useradd <username>
+$ passwd <username>
+
+-How to delete an account:
+ determine the UID first then run following commands:
+ 	$id ACCOUNT
+ 	$userdel -r UID
+
+-Show account aging info : for instance expiry info
+ $ chage -l account
+
+ 
+- It is important having only one account with UID = 0 (is khown root user by linux)
+	-search account with uid 0
+	-cmd: awk -F: '($3 == 0) {print}'
+
+UID = 0 => root user
+UID < 1000 => applications and services
+UID > 1000 => Normal users
+
+-Locking and Unlokcing Account
+$ passwd -l account
+$ passwd -u account
+
+-Monitoring Authentication Logs
+$ last
+$ lastb
+
+-Disabling root logins
+ 1-leave blank /etc/securetty
+ 2-edit /etc/ssh/sshd_config
+	1- change line PermitRootLogin yes to PermitRootLogin no
+	2- $ systemctl reload sshd
+
+
+User as a Sudoers:
+Create files : /etc/sudoers.d/<username>
+	<username> ALL=(root) usr/bin/apt => act as root user with sudo
+	<username> ALL=(ALL) usr/bin/whoami =>act as another user with sudo > sudo -u <another_username> whoami
+
+Show User Abilities
+$ sudo -l -U <username>
+
+-----------------------------------------------------------------------------------------
+Network security
+
+- How to check ports' status
+$ nmap ip_address 
+$ lsof -i
+$ telnet address port
+$ nc -v address port
+
+-SSH Hardening
+
+/etc/ssh/sshd_config:
+PubKeyAuthentication Yes
+
+generate keys
+ssh-keygen ==> /.ssh
+
+To copy the public key on remote system:
+ssh-copy-id user@ip_address
+==>
+Add public key to remote server on ~/.ssh/authorized_keys
+
+Force Key Authentication:
+/etc/ssh/sshd_config:
+
+PasswordAuthentication no
+PermitRootLogin no/without-password
+AllowTcpForwarding no
+GatewayPorts no
+Protocol 2
+ListenAddress ip
+Port 2222
+Banner none => banner address = /etc/issue.net
+Allow/DenyUsers user1 user2 ...
+Allow/DenyGroups group1 group2 ...
+
+Realod SSH
+-systemctl reload sshd
+
+
+SSH Port Forwarding:
+ssh -L sqlport:sqlserverip:sqlport server1
+ssh -L 3306:127.0.0.1:3306 server1
+
+Firewall Hardening
+
+  $ sudo iptables -t filter -A INPUT -p tcp --dport 443 -j ACCEPT
+  $ sudo iptables -t filter -A INPUT -p tcp --dport 80 -j ACCEPT
+  $ sudo iptables -t filter -A INPUT -p tcp --dport 3022 -j ACCEPT
+  $ sudo iptables -t filter -A INPUT -p tcp --dport 53 -j ACCEPT
+  $ sudo iptables -t filter -A INPUT -p udp --dport 53 -j ACCEPT
+  $ sudo iptables -t filter -A INPUT -m conntract --ctstate ESTABLISHED,RELATED -j ACCEPT
+  $ sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+  
+
+
+---------------------------------------------------------------------------------
+File system Hardening
+
+$ ls -l <filename/dirname> => -l shows the files in the directory
+$ ls -ld <dirname> => -ld shows the directory itself
+
+-change the group
+$ chgrp <groupname> <filename>
+
+-list of groups
+$ groups
+
+- Rules for changing permissions (Add write permission to the group) 
+	+ means add permissions/ - means remove permissions
+	-g = group, u=user, o=other
+$ chmod g+w <filename> 
+$ chmod g-w <filename>
+$ chmod ug+x <filename>
+...
+
+change the directory/file permission
+chmod [rwx][rwx][rwx] file/dir name => chmod 400 x => [100][000][000]
+
+File attribute
+lsattr => shows attribtes of a file
+-i => immutable
+-a => append only
+-s =>
+chattr +/-/= set attribute
+chattr +a <filepath>
+chattr =si <filepath>
+
+ACL
+
+setfacl -m <u|g>:<uname|gname>:perms <filename|dirname>
+setfacl -m m:perms <filename|dirname> => all users in the group
+setfacl -m o:perms <filename|dirname> => other users
+
+Show ACL records
+getfacl <filename|dirname>
+
+Rootkit Hunter
+
+rkhunter
+/etc/rkhunter.cong
+	MAIL-ON-WARNING=email@example.com
+$ rkhunter --propupd
+$ rkhunter -c --rwo => run rkhunter
+
+Add rkhunter to cronjob
+$ crontab -e
+add line => 0 0 * * * <rkhunter addr = which rkhunter> --cronjob --update > /vat/tmp/rkhunter.cronlog 2>&1
+
+------------------------------------------------------------------------------------------------------------
+
+config login.defs file based on lynis suggestion
+	$ sudo nano /etc/login.defs
+	$ PASS_MAX_DAYS 7
+	$ PASS_MIN_DAYS 30
+	$ PASS_WARN_AGE 6
+
+
