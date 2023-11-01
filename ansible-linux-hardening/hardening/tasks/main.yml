@@ -1,0 +1,107 @@
+---
+# - name: Add grub username and password to the /etc/grub.d/41_custom
+#   ansible.builtin.lineinfile:
+#     path: /etc/grub.d/41_custom
+#     line: "{{item}}"
+#   loop:
+#     - 'set superusers = {{grub_username}}'
+#     - 'password {{grub_username}} {{grub_password}}'
+
+# - name: Run grub-update command
+#   ansible.builtin.command: update-grub
+
+- name: SSH Hardening
+  ansible.builtin.template:
+    src: sshd-config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: SSH Banner warninng
+  ansible.builtin.template:
+    src: ssh-banner.j2
+    dest: /etc/issue.net
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: Delete issue file which expose Ubuntu version
+  ansible.builtin.file:
+    state: absent
+    path: /etc/issue
+
+
+# - name: Delete ssh welcome massage 
+#   ansible.builtin.file:
+#     state: absent
+#     path: /etc/update-motd.d/
+
+
+- name: Touch a empty file to login ssh quietly
+  ansible.builtin.file:
+    path: /home/{{ansible_user}}/.hushlogin
+    state: touch
+    mode: u=rw,g=r,o=r
+
+
+- name: Restart SSH
+  service:
+    name: sshd
+    state: restarted
+
+- name: Iptables Hardening
+  ansible.builtin.template: 
+    src: iptables-config.j2
+    dest: /etc/iptables/rules.v4
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    backup: yes
+
+- name: restart iptables
+  service: name=iptables enabled=yes state=restarted
+
+- name: "Delete default min, max and warn age of passwords"
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "{{item}}"
+    state: absent
+    backup: yes
+  loop:
+    - PASS_MAX_DAYS
+    - PASS_MIN_DAYS
+    - PASS_WARN_AGE
+
+- name: "Add new min, max and warn age of passwords"
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    line: "{{item}}"
+  loop:
+    - PASS_MAX_DAYS 30
+    - PASS_MIN_DAYS 60
+    - PASS_WARN_AGE 6
+
+
+- name: Add line to limits.conf (limiting core dump)
+  ansible.builtin.lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{item}}"
+  loop:
+    - "* hard core 0"
+    - "* soft core 0"
+
+- name: Add line to sysctl.conf (limiting core dump)
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    line: '{{item}}'
+  with_items:
+    - fs.suid_dumpable=0
+    - kernel.core_pattern=|/bin/false
+
+- name: Run core dump limit command
+  ansible.builtin.command: sysctl -p /etc/sysctl.conf
+
+...
