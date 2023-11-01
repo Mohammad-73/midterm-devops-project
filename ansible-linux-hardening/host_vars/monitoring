@@ -1,4 +1,0 @@
----
-#ansible_user: monitoring
-#ansible_port: 3022
-...
