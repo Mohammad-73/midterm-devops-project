@@ -1,0 +1,16 @@
+---
+# tasks file for ssh-config
+- name: Generate an OpenSSH keypair with the default values (4096 bits, rsa)
+  community.crypto.openssh_keypair:
+    path: ~/.ssh/id_ssh_rsa
+  delegate_to: ubuntu-c
+
+
+- name: Set authorized key for user ubuntu copying it from current user
+  ansible.posix.authorized_key:
+    user: "{{ansible_user}}"
+    state: present
+    key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ssh_rsa.pub') }}"
+
+...
+
