@@ -3,11 +3,11 @@
 -Change the username
 	$ sudo usermod -l NEW_USERNAME OLD_USERNAME
 
+-Change the group name
+	$ groupmod -n NEW_USERNAME OLD_USERNAME
+
 -Update home directory
 	$ sudo usermod -d /home/NEW_USERNAME -m NEW_USERNAME
-
--File ownership and permissions
-	$ sudo chown -R NEW_USERNAME:/home/NEW_USERNAME
 
 -Add NEW_USERNAME to sudoer group 
 	$ touch /etc/sudoers.d/NEW_USERNAME
