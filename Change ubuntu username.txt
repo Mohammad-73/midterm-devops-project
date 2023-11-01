@@ -12,3 +12,5 @@
 -Add NEW_USERNAME to sudoer group 
 	$ touch /etc/sudoers.d/NEW_USERNAME
 	> NEW_USERNAME ALL=(ALL) NOPASSWD:ALL
+-Apply new permission for /etc/sudoers.d/NEW_USERNAME
+	$ chmod 640 /etc/sudoers.d/NEW_USERNAME
