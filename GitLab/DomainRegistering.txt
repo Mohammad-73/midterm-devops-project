@@ -1,0 +1,27 @@
+-------------------- Config ssh in server -------------------
+$ ssh-keygen
+$ ssh-copy-id server-user@[server-ip]
+$ ssh server-user@[server-ip] 
+> Configure /etc/ssh/sshd_config on the server 
+	    PasswordAuthentication no
+
+-------------------- Config NS for domain name -------------------
+Set the dns of the server provider (arvancloud.ir) to the domain name service provider like (irnic.ir)
+
+-------------------- Install NginX -------------------
+$ sudo apt-get update
+$ sudo apt-get install nginx
+> Configure /etc/nginx/sites-enabled/default
+    server-name www.mrkhalili.ir mrkhalili.ir;
+$ sudo systemctl restart nginx
+
+-------------------- Install certbot -------------------
+$ apt-get update
+$ sudo apt-get install certbot
+$ apt-get install python3-certbot-nginx
+> Set two DNS A record @ and www (in server provider like arvancloud.ir), declareing mrkhalili.ir and www.mrkhalili.ir domain name respectively
+$ sudo certbot --nginx -d mrkhalili.ir -d www.mrkhalili.ir
+
+-------------------- Renewal certification in the certbot -------------------
+$ crontab -e
+> 0 12 * * * /usr/bin/certbot renew --quiet
