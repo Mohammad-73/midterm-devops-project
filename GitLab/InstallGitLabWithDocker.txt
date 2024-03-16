@@ -1,0 +1,144 @@
+-------------------- Config ssh in server -------------------
+$ ssh-keygen
+$ ssh-copy-id server-user@[server-ip]
+$ ssh server-user@[server-ip] 
+> Configure /etc/ssh/sshd_config on the server 
+	    PasswordAuthentication no
+
+-------------------- Install certbot -------------------
+$ apt-get update
+$ sudo apt-get install certbot
+$ apt-get install python3-certbot-nginx
+> Set two DNS A record @ and www (in server provider like arvancloud.ir), declareing mrkhalili.ir and www.mrkhalili.ir domain name respectively
+$ sudo certbot --nginx -d mrkhalili.ir -d www.mrkhalili.ir
+
+-------------------- Renewal certification in the certbot -------------------
+$ crontab -e
+> 0 12 * * * /usr/bin/certbot renew --quiet
+
+----------------- Set the Shekan's Ip in the netplan for installing docker : addresses [178.22.122.100, 185.51.200.2]----------
+
+$ sudo nano /etc/netplan/50-cloud-init.yaml
+# This file is generated from information provided by the datasource.  Changes
+# to it will not persist across an instance reboot.  To disable cloud-init's
+# network configuration capabilities, write a file
+# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
+# network: {config: disabled}
+
+> network:
+    version: 2
+    ethernets:
+        eth0:
+            dhcp4: true 
+            match:
+                macaddress: fa:16:3e:9f:ab:14
+            nameservers:
+                addresses: [178.22.122.100, 185.51.200.2]
+            mtu: 1500
+            set-name: eth0
+
+$ sudo netplan try 
+> ctlr + c
+
+----------------------- Install Docker --------------------
+#Docs
+----------------------- Docker PostInstalation --------------------
+#Docs
+----------------------- Change docker registery mirror --------------------
+
+$ sudo nano /etc/docker/daemon.json
+> {
+    "insecure-registries" : ["https://docker.arvancloud.ir"],
+    "registry-mirrors": ["https://docker.arvancloud.ir"]
+  }
+$ sudo systemctl restart docker
+
+--------------- change server ssh port ----------------
+#Docs
+------------------ Install gitlab ---------------------- 
+
+$ sudo mkdir -p /srv/gitlab
+
+$ export GITLAB_HOME=/srv/gitlab
+
+/srv/gitlab$ sudo mkdir logs
+/srv/gitlab$ sudo mkdir data
+/srv/gitlab$ sudo mkdir config
+/srv/gitlab$ sudo mkdir backup
+
+# Create docker compose file
+docker compose:
+
+> version: '3.6'
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:16.8.3-ce.0
+    container_name: gitlab
+    restart: always
+    hostname: 'mrkhalili.ir'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        # Add any other gitlab.rb configuration here, each on its own line
+        external_url 'https://mrkhalili.ir'
+
+        # Change the initial default admin password
+        gitlab_rails['initial_root_password'] = "Mkh/1373"
+        gitlab_rails['display_initial_root_password'] = "false"
+        gitlab_rails['store_initial_root_password'] = "false"
+
+        # Configure a failed authentication ban
+        gitlab_rails['rack_attack_git_basic_auth'] = {
+          'enabled' => false,
+          'ip_whitelist' => ["127.0.0.1"],
+          'maxretry' => 10,
+          'findtime' => 60,
+          'bantime' => 3600
+        }
+
+        # Disable unuse services
+        prometheus['enable'] = false
+        grafana['enable'] = false
+        alertmanager['enable'] = false
+        pgbouncer_exporter['enable'] = false
+        puma['exporter_enabled'] = false
+        gitlab_exporter['enable'] = false
+        node_exporter['enable'] = false
+        sidekiq['metrics_enabled'] = false
+        redis_exporter['enable'] = false
+        postgres_exporter['enable'] = false
+
+        # gitlab backup config
+        gitlab_rails['manage_backup_path'] = true
+        gitlab_rails['backup_path'] = "/var/opt/gitlab/backups"
+        gitlab_rails['backup_archive_permissions'] = 0644
+        gitlab_rails['backup_keep_time'] = 604800
+        gitlab_rails['env'] = {"SKIP" => "registry"}
+
+    ports:
+      - '80:80'
+      - '443:443'
+      - '22:22'
+    volumes:
+      - '$GITLAB_HOME/config:/etc/gitlab'
+      - '$GITLAB_HOME/logs:/var/log/gitlab'
+      - '$GITLAB_HOME/data:/var/opt/gitlab'
+      - '$GITLAB_HOME/backup:/var/opt/gitlab/backups'
+    shm_size: '256m'
+
+$ docker compose up -d
+
+# Install Gitlab runner in new server
+--------------------- Install Docker ----------------------
+#Docs
+--------------------- Install GitLab runner  ----------------------
+
+$ docker volume create gitlab-runner-config
+
+$ docker run -d --name gitlab-runner --restart always \
+  -v /srv/gitlab-runner/config:/etc/gitlab-runner \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  gitlab/gitlab-runner:latest
+
+$ docker exec -it gitlab-runner bash
+	=> gitlab-runner register
+		-> url, token, docker, ..

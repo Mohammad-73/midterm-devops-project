@@ -1,0 +1,6 @@
+- Set password retry
+- Password limitation and two factor authentication
+- Make new users confirm email
+
+
+
