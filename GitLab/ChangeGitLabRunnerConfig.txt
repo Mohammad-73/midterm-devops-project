@@ -1,0 +1,6 @@
+$  sudo nano /var/lib/docker/volumes/gitlab-runner-config/_data/config.toml
+
+-------------- restart gitlab-runner ---------------
+
+$ docker exec -it <container_name> bash
+    $ gitlab-runner restart
