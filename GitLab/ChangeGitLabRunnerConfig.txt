@@ -1,4 +1,6 @@
 $  sudo nano /var/lib/docker/volumes/gitlab-runner-config/_data/config.toml
+> cache_dir = "/cache"
+> volumes = ["/cache", "/var/run/docker.sock:/var/run/docker.sock"]
 
 -------------- restart gitlab-runner ---------------
 

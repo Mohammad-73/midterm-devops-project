@@ -8,7 +8,6 @@ $ sudo systemctl restart ssh
 -------------------- Install certbot -------------------
 $ apt-get update
 $ sudo apt-get install certbot
-$ apt-get install python3-certbot-nginx
 > Set two DNS A record @ and www (in server provider like arvancloud.ir), declareing mrkhalili.ir and www.mrkhalili.ir domain name respectively
 $ sudo certbot certonly --standalone -d mrkhalili.ir -d www.mrkhalili.ir
 $ sudo cp /etc/letsencrypt/live/mrkhalili.ir/fullchain.pem /srv/gitlab/config/ssl/mrkhalili.ir.crt
@@ -43,6 +42,7 @@ $ sudo nano /etc/netplan/50-cloud-init.yaml
             set-name: eth0
 
 $ sudo netplan try 
+$ sudo netplan apply 
 
 ----------------------- Install Docker --------------------
 #Docs
@@ -133,4 +133,28 @@ services:
 
 $ docker compose up -d
 
+------------------ Setup Docker Container Registry For Gitlab ----------------------
+------------------ Get certificate for sub domain ----------------------
+# Create a new DNS record for the sub domain (registery.mrkhalili.ir, www.registery.mrkhalili.ir)
+# $ sudo certbot delete --standalone -d *.mrkhalili.ir
+$ sudo certbot certonly --standalone -d registry.mrkhalili.ir -d www.registry.mrkhalili.ir
+# $ sudo certbot certonly --standalone -d "mrkhalili.ir,www.mrkhalili.ir,registry.mrkhalili.ir,www.registry.mrkhalili.ir" -i installer --keep
+$ sudo cp /etc/letsencrypt/live/registry.mrkhalili.ir/fullchain.pem /srv/gitlab/config/ssl/registry.mrkhalili.ir.crt
+$ sudo cp /etc/letsencrypt/live/registry.mrkhalili.ir/privkey.pem /srv/gitlab/config/ssl/registry.mrkhalili.ir.key
+$ sudo chmod 600 /etc/gitlab/ssl/registry.mrkhalili.ir.*
 
+------------------ Config gitlab.rb for registry ----------------------
+$ sudo nano /srv/gitlab/config/gitlab.rb
+> registry_external_url 'https://registry.mrkhalili.ir'
+> gitlab_rails['registry_path'] = "/var/opt/gitlab/gitlab-rails/shared/registry"
+> registry['enable'] = true
+> registry_nginx['enable'] = true
+> gitlab_rails['lfs_enabled'] = true
+> registry_nginx['ssl_certificate'] = "/etc/gitlab/ssl/registry.mrkhalili.ir.crt"
+> registry_nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/registry.mrkhalili.ir.key"
+> nginx['ssl_certificate'] = "/etc/gitlab/ssl/mrkhalili.ir.crt"
+> nginx['ssl_certificate_key'] = "/etc/gitlab/ssl/mrkhalili.ir.key"
+$ docker exec -it gitlab gitlab-ctl reconfigure
+# Enable container registry for each project
+# setting > general > Visibility, project features, permissions > Container registry
+# Then you can see container registry in Deploy menu

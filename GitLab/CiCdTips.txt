@@ -1,0 +1,5 @@
+------------ Create ssh key and config into gitlab ------------
+https://docs.gitlab.com/ee/ci/ssh_keys/#:~:text=Troubleshooting-,Error%20loading%20key%20%22%2Fbuilds%2Fpath%2FSSH_PRIVATE_KEY%22%3A,a%20newline%20(%20LF%20character).
+
+------------- Running SAST in an offline environment ----------
+https://docs.gitlab.com/ee/user/application_security/sast/
